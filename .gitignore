@@ -1,0 +1,13 @@
+# Generated data
+astro_subvols/
+cache/
+outputs/
+
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+venv-*/
+*env/
