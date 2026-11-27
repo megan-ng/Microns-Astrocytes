@@ -7,8 +7,8 @@ Edit the Config(...) call below, or pass overrides on the command line:
 
 import argparse
 
-from astro_subvols.config import Config
-from astro_subvols.pipeline import run
+from functions.config import Config
+from functions.pipeline import run
 
 
 def main():

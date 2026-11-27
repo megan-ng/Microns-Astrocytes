@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.widgets import Slider
 
-from astro_subvols.tile_io import list_tile_bases, load_tile_pair
+from functions.tile_io import list_tile_bases, load_tile_pair
 
 
 def view_overlay(image, mask, alpha=0.4, title=""):
