@@ -2,27 +2,26 @@
 
 A Python toolkit for working with astrocyte data from the MICrONS dataset.
 
-This repository contains scripts and reusable functions for retrieving, processing, and analyzing MICrONS electron microscopy (EM) data and astrocyte segmentations. It is intended to support the extraction of image subvolumes, generation of segmentation masks, and downstream analysis of astrocyte morphology and relationships with other cells.
+This repository contains reusable functions and example scripts for retrieving, processing, and analyzing MICrONS electron microscopy (EM) data and astrocyte segmentations. It supports the extraction of image subvolumes, generation of segmentation masks, 3D screening of an astrocyte to choose a region of interest, and downstream analysis of astrocyte morphology and relationships with other cells.
 
 ## Repository Structure
 
 ```text
 Microns-Astrocytes/
 │
-├── functions/          # Reusable Python modules
-│
-├── scripts/            # Scripts for running analyses and workflows
-│
-├── requirements.txt    # Python dependencies
+├── microns_astro/      # The library: import and reuse these functions
+├── examples/           # Runnable scripts showing how to use the library│
+├── pyproject.toml      # Package definition and dependencies
+├── requirements.txt    # Pinned snapshot of one working environment
 ├── .gitignore          # Files and directories excluded from Git
 └── README.md           # Project documentation
 ```
 
+The library is the product; `examples/` just shows ways to use it. Every example is a few lines of "build a `Config`, call a function".
+
 ## Installation
 
 ### 1. Clone the repository
-
-Open a terminal and navigate to the directory where you want to store the project.
 
 ```bash
 git clone https://github.com/megan-ng/Microns-Astrocytes.git
@@ -31,62 +30,63 @@ cd Microns-Astrocytes
 
 ### 2. Create a virtual environment
 
-A virtual environment keeps this project's Python packages separate from other Python installations and projects.
-
-Create the environment:
+Python 3.10 or newer is required (3.11 recommended).
 
 ```bash
-python3 -m venv venv
+python3.11 -m venv venv
+source venv/bin/activate        # macOS / Linux
+venv\Scripts\activate           # Windows
+python --version
 ```
 
-Activate it:
-
-**macOS / Linux**
-```bash
-source venv/bin/activate
-```
-
-**Windows**
-```bash
-venv\Scripts\activate
-```
-
-Once activated, your terminal should display `(venv)` before the command prompt.
-
-### 3. Install dependencies
-
-Upgrade pip:
+### 3. Install the project
 
 ```bash
 python -m pip install --upgrade pip
-```
-
-Install the required Python packages:
-
-```bash
 python -m pip install -r requirements.txt
+python -m pip install -e ".[all]"
 ```
 
-### 4. Install the project
+### 4. CAVEclient Setup (first time only)
 
-Install the repository in editable mode:
+The Connectome Annotation Versioning Engine (CAVE) is a suite of tools developed at the Allen Institute and Seung Lab to manage large connectomics data. The CAVEclient is the main way to programmatically access the MICrONS data using Python. See how to access the MICrONS data with CAVEclient [here](https://tutorial.microns-explorer.org/quickstart_notebooks/01-caveclient-setup.html).
 
+## Quickstart
+
+Run everything from the repository root with the virtual environment active.
+
+**A. Download one EM + mask pair, and visualize one mesh**
 ```bash
-python -m pip install -e .
+python examples/download_em_mask_mesh_demo.py
 ```
 
-This allows you to import modules from `functions/` when running scripts, without needing to modify your Python path manually.
-
-## Running Scripts
-
-Activate the virtual environment before running any scripts:
-
+**B. Generate many tiles automatically**
 ```bash
-source venv/bin/activate
+python examples/generate_subvols.py --astro-id 864691136364261346 --target-written 5
+```
+Tiles are accepted only if they contain proofread astrocytes and no unproofread ones. See [How tiles are chosen](#how-tiles-are-chosen).
+
+## Settings
+
+Everything tunable lives in `microns_astro/config.py` (`Config`). Build a new one instead of editing globals:
+
+```python
+from microns_astro.config import Config
+from microns_astro.pipeline import run
+
+run(Config(astro_id=864691136364261346, target_written=5, subvolume_size=(512, 512, 64)))
 ```
 
-Scripts can then be run from the repository root. For example:
+Outputs go to `output/<astro_id>/` and caches to `cache/` (both ignored by git). Change them with `out_dir_base` and `cache_root`.
 
-```bash
-python scripts/example_script.py
-```
+## How tiles are chosen
+
+For each candidate tile (laid over the astrocyte's mesh), cheap tests run first and expensive ones last:
+
+1. Skip tiles already rejected in earlier runs (`rejected_tiles.txt`).
+2. Skip tiles touched by nearby unproofread astrocyte meshes.
+3. Read the tile at a coarse mip; reject it if an unproofread astrocyte is visible.
+4. Download the full-resolution segmentation. Require at least one proofread astrocyte and no unproofread ones.
+5. Build the mask (all proofread astrocytes in the tile), download the EM, and write the TIFF pair.
+
+The cell-type table is the source of truth for who counts as an astrocyte, so the guarantee holds only as far as that table does.

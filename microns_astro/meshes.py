@@ -75,3 +75,43 @@ def get_neighbor_verts(seg_vol, cfg, segid):
     except Exception as e:
         tqdm.write(f"Neighbor mesh failed for {segid}: {type(e).__name__}: {e}")
         return None
+
+
+def _fetch_mesh(seg_vol, segid, lod):
+    return seg_vol.mesh.get(segid)[segid] if lod is None \
+        else seg_vol.mesh.get(segid, lod=lod)[segid]
+
+
+def get_view_mesh(seg_vol, cfg, segid):
+    """(vertices_nm, faces) for display at cfg.view_mesh_lod, cached on disk.
+
+    Vertices stay in nanometers (CloudVolume's native mesh coordinates).
+    Returns None if the mesh cannot be fetched.
+    """
+    segid = int(segid)
+    lod = cfg.view_mesh_lod
+    lod_tag = "full" if lod is None else f"lod{lod}"
+    path = os.path.join(cfg.view_mesh_dir,
+                        f"{segid}_{lod_tag}_v{cfg.datastack_version}.npz")
+
+    if cfg.cache_neighbor_meshes and os.path.exists(path):
+        try:
+            data = np.load(path)
+            return data["verts_nm"], data["faces"]
+        except Exception as e:
+            tqdm.write(f"Corrupt view-mesh cache for {segid}; deleting: {e}")
+            remove_quietly(path)
+
+    try:
+        try:
+            mesh = _fetch_mesh(seg_vol, segid, lod)
+        except Exception:  # requested LOD missing -> full-resolution mesh
+            mesh = _fetch_mesh(seg_vol, segid, None)
+        verts = np.asarray(mesh.vertices, dtype=np.float32)
+        faces = np.asarray(mesh.faces, dtype=np.int32)
+        if cfg.cache_neighbor_meshes:
+            cached_save(path, lambda f: np.savez(f, verts_nm=verts, faces=faces))
+        return verts, faces
+    except Exception as e:
+        tqdm.write(f"View mesh failed for {segid}: {type(e).__name__}: {e}")
+        return None

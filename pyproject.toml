@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "microns-astro"
+version = "0.1.0"
+description = "Extract EM + astrocyte-mask subvolumes from the MICrONS dataset"
+readme = "README.md"
+requires-python = ">=3.10"
+# Enough to load and write tile pairs (microns_astro.tile_io) and use the pure
+# geometry helpers. Everything that talks to CAVE/CloudVolume is in "pipeline".
+dependencies = ["numpy", "tifffile", "tqdm"]
+
+[project.optional-dependencies]
+pipeline = [
+    "caveclient", "cloud-volume", "fastremap", "scipy", "intervaltree",
+]
+viewer = ["matplotlib"]        # examples/view_overlay.py, examples/demo.py
+screen = ["plotly"]            # inline plotly.js into the 3D screening page
+mesh = ["pyvista"]             # examples/download_em_mask_mesh_demo.py
+dev = ["pytest"]
+all = ["microns-astro[pipeline,viewer,screen,mesh,dev]"]
+
+[tool.setuptools.packages.find]
+include = ["microns_astro*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

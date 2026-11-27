@@ -2,13 +2,13 @@
 """Generate (EM, mask) tile pairs around proofread astrocytes.
 
 Edit the Config(...) call below, or pass overrides on the command line:
-    python scripts/generate_subvols.py --astro-id 864691136010788524 --target-written 5
+    python examples/generate_subvols.py --astro-id 864691136010788524 --target-written 5
 """
 
 import argparse
 
-from functions.config import Config
-from functions.pipeline import run
+from microns_astro.config import Config
+from microns_astro.pipeline import run
 
 
 def main():

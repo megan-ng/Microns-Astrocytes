@@ -55,9 +55,12 @@ def drop_tiles_near_unproofread(tiles, info, cfg, unp_ids, unp_pos_nm, seg_vol):
     return kept
 
 
-def coarse_has_unproofread(start, end, coarse_vol, cfg, check_mip, keep_ids,
-                           all_astro_ids, timestamp):
-    """True if an unproofread astrocyte is visible at a coarse mip."""
+def coarse_tile_ids(start, end, coarse_vol, cfg, check_mip, timestamp):
+    """Unique segment IDs and voxel counts of a tile, read at a coarse mip.
+
+    `start`/`end` are voxels at cfg.mip. The region is rounded outward, so it
+    can include a sliver outside the tile (conservative).
+    """
     r0 = np.array(coarse_vol.meta.resolution(cfg.mip), dtype=float)
     r1 = np.array(coarse_vol.meta.resolution(check_mip), dtype=float)
     lo = np.floor(np.array(start) * r0 / r1).astype(int)
@@ -66,11 +69,17 @@ def coarse_has_unproofread(start, end, coarse_vol, cfg, check_mip, keep_ids,
     bounds = coarse_vol.meta.bounds(check_mip)
     lo, hi = np.maximum(lo, bounds.minpt), np.minimum(hi, bounds.maxpt)
     if (hi <= lo).any():
-        return False
+        return np.zeros(0, np.uint64), np.zeros(0, np.int64)
 
     seg = coarse_vol.download(Bbox(lo.tolist(), hi.tolist()), mip=check_mip,
                               agglomerate=True, timestamp=timestamp)
-    ids = fastremap.unique(seg)
+    return fastremap.unique(seg, return_counts=True)
+
+
+def coarse_has_unproofread(start, end, coarse_vol, cfg, check_mip, keep_ids,
+                           all_astro_ids, timestamp):
+    """True if an unproofread astrocyte is visible at a coarse mip."""
+    ids, _ = coarse_tile_ids(start, end, coarse_vol, cfg, check_mip, timestamp)
     return bool((np.isin(ids, all_astro_ids) & ~np.isin(ids, keep_ids)).any())
 
 

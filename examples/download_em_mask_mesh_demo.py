@@ -8,11 +8,11 @@ import numpy as np
 import fastremap
 import pyvista as pv
 from cloudvolume import Bbox
-from functions.config import Config
-from functions.cave import load_vol, setup_caveclient
-from functions.meshes import fetch_mesh_bbox_fast
-from functions.ids import get_proofread_astrocyte_root_ids
-from functions.tile_io import save_tile_pair, tile_base_path
+from microns_astro.config import Config
+from microns_astro.cave import load_vol, setup_caveclient
+from microns_astro.meshes import fetch_mesh_bbox_fast
+from microns_astro.ids import get_proofread_astrocyte_root_ids
+from microns_astro.tile_io import save_tile_pair, tile_base_path
 
 # --- setup configuration and CAVEclient
 cfg = Config()
@@ -35,14 +35,16 @@ subvol_bbox = (tuple(subvol_min), tuple(subvol_max))
 
 # --- extract the subvolume from the image and segmentation volumes
 img = img_vol[subvol_min[0]:subvol_max[0], subvol_min[1]:subvol_max[1], subvol_min[2]:subvol_max[2]]
-seg = seg_vol.download(Bbox(subvol_min, subvol_max), mip=cfg.mip, agglomerate=True)
+# pin voxel root IDs to the same snapshot as the proofreading table
+timestamp = client.materialize.get_timestamp(cfg.datastack_version)
+seg = seg_vol.download(Bbox(subvol_min, subvol_max), mip=cfg.mip, agglomerate=True, timestamp=timestamp)
 keep_ids = get_proofread_astrocyte_root_ids(client, cfg)
 ids, counts = fastremap.unique(seg, return_counts=True)
 is_keep = np.isin(ids, keep_ids)
 mask = fastremap.mask_except(seg, ids[is_keep].tolist(), in_place=True)
 
 # --- save the subvolumes to disk
-base_path = tile_base_path(cfg.out_dir_base, cfg.astro_id, subvol_min)
+base_path = tile_base_path(cfg.out_dir(cfg.astro_id), cfg.astro_id, subvol_min)  # output/<astro_id>/, like the pipeline
 save_tile_pair(base_path, img, mask, cfg.img_compression, cfg.img_compression_level, cfg.mask_compression)
 print(f"Saved subvolumes to {base_path}")
 

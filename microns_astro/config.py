@@ -54,6 +54,9 @@ class Config:
 
     log_every_tile: bool = True
 
+    # --- 3D screening viewer ---
+    view_mesh_lod: int | None = 3  # mesh detail for display (higher = coarser)
+
     # --- derived paths (computed, never created here) ---
     @property
     def id_cache_dir(self) -> str:
@@ -66,6 +69,10 @@ class Config:
     @property
     def target_mesh_dir(self) -> str:
         return os.path.join(self.cache_root, "target_meshes")
+
+    @property
+    def view_mesh_dir(self) -> str:
+        return os.path.join(self.cache_root, "view_meshes")
 
     def out_dir(self, astro_id) -> str:
         return os.path.join(self.out_dir_base, str(astro_id))
